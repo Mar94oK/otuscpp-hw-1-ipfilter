@@ -32,6 +32,7 @@ std::vector<std::string> split(const std::string &str, char d)
 int main(int argc, char const *argv[])
 {
 	std::cout << "Hi, I am Ip-Filter.";
+	std::cout << "I am doing only lazy commit.";
 	
 	try
 	{
