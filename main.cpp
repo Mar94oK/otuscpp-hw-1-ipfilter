@@ -32,6 +32,113 @@ std::vector<std::string> split(const std::string &str, char d)
 	return r;
 }
 
+//C++20 required
+//std::vector<std::string> Foo(const std::string& input)
+//{
+//	std::vector<std::string> output;
+//
+//	for(const auto& i : input | std::ranges::views::split(' ')) {
+//		output.emplace_back(std::cbegin(i), std::cend(i));
+//	}
+//	return output;
+//}
+
+
+class IpAddressIPV4
+{
+
+private:
+	
+	static const uint8_t delimiter = '.';
+	static const uint8_t numberOfOctets = 4;
+
+private:
+	
+	bool ValidateOctetSize(const std::string& octet)
+	{
+		return ( (octet.size() < 4) && (octet.size() > 0) );
+	}
+	
+	uint64_t GetIpWeight(const std::vector<std::string> &v)
+	{
+		if (v.size() > 4)
+			return 0;
+		
+		uint64_t weight = 0;
+		uint8_t powValue = 4;
+		uint32_t bit32IpAddressGroupValues = 256; //one group, ex 126bit addr - 65536 values
+		for (auto it : v)
+		{
+			if (powValue != 1)
+			{
+				weight += (std::stoi(it) * ( std::pow(bit32IpAddressGroupValues, powValue)));
+				powValue--;
+			}
+			else
+			{
+				weight += (std::stoi(it) * bit32IpAddressGroupValues);
+				return weight;
+			}
+		}
+		
+		return weight;
+	}
+	
+private:
+	
+	std::string rawValue;
+	std::vector<std::string> vectorizedValue;
+	uint64_t weight;
+	
+	
+public:
+	
+	friend bool operator> (const IpAddressIPV4 &lhs, const IpAddressIPV4 &rhs);
+	friend std::ostream& operator<<(std::ostream& os, const IpAddressIPV4& addr);
+
+public:
+	
+	explicit IpAddressIPV4(std::string value)
+	{
+		vectorizedValue = split(value, delimiter);
+		
+		if (vectorizedValue.size() != numberOfOctets )
+			throw std::runtime_error("Bad string format for IPV4 Address: " + value + " Check octets. Vectorized value size: " + std::to_string(vectorizedValue.size()));
+		
+		for (auto it : vectorizedValue)
+		{
+			if (!ValidateOctetSize(it))
+				throw std::runtime_error("Bad string format for IPV4 Address: " + value + " Check octet value: " + it);
+		}
+	
+		rawValue = value;
+		
+		weight = this->GetIpWeight(vectorizedValue);
+	}
+	
+
+};
+
+
+inline bool operator> (const IpAddressIPV4 &lhs, const IpAddressIPV4 &rhs)
+{
+	return lhs.weight > rhs.weight;
+}
+
+
+inline std::ostream& operator<<(std::ostream& os, const IpAddressIPV4& addr)
+{
+	os << addr.rawValue;
+	return os;
+}
+
+template <typename Iter>
+Iter next(Iter iter)
+{
+	return ++iter;
+}
+
+
 std::string IpStringToString(const std::vector<std::string> &v)
 {
 	std::string result;
@@ -60,25 +167,12 @@ uint64_t GetIpWeight(const std::vector<std::string> &v)
 		}
 		else
 		{
-			weight +=(std::stoi(it) * bit32IpAddressGroupValues);
+			weight += (std::stoi(it) * bit32IpAddressGroupValues);
 			return weight;
 		}
 	}
 	
 	return weight;
-}
-
-
-bool sortByWeightAscending(const std::pair<uint32_t , std::vector<std::string>> &a,
-			   const std::pair<uint32_t , std::vector<std::string>> &b)
-{
-	return (a.first < b.first);
-}
-
-bool sortByWeightDescending(const std::pair<uint32_t , std::vector<std::string>> &a,
-						   const std::pair<uint32_t , std::vector<std::string>> &b)
-{
-	return (a.first > b.first);
 }
 
 
@@ -91,6 +185,7 @@ int main(int argc, char const *argv[])
 	{
 		std::vector<std::vector<std::string> > ip_pool;
 		std::vector<std::pair<uint64_t , std::vector<std::string>>> weightedIpPool;
+		std::vector<IpAddressIPV4> ipPool;
 		
 		for(std::string line; std::getline(std::cin, line);)
 		{
@@ -101,18 +196,50 @@ int main(int argc, char const *argv[])
 			uint64_t ipAddrWeight = GetIpWeight(split(actualIpAddr, '.'));
 
 			weightedIpPool.push_back(std::make_pair(ipAddrWeight, split(actualIpAddr, '.')));
-
+			
+			
+			try
+			{
+				IpAddressIPV4 addr = IpAddressIPV4(v.at(0));
+				ipPool.push_back(addr);
+			}
+			catch(std::exception& e)
+			{
+				std::cout << e.what() << std::endl;
+				std::cout << "Failed adding Ip Line: " << v.at(0) << std::endl;
+			}
+			
 		}
 		
 		// TODO reverse lexicographically sort
 		
-		std::sort(weightedIpPool.begin(), weightedIpPool.end());
+		//std::sort(weightedIpPool.begin(), weightedIpPool.end(), sortByWeightAscending);
+		std::sort(weightedIpPool.begin(), weightedIpPool.end(),
+				[](auto &left, auto &right)
+						{
+							return left.first > right.first;
+						});
 
-		std::cout << "My Ip Pool" << std::endl;
-		for (auto it : weightedIpPool)
+		std::sort(ipPool.begin(), ipPool.end(),
+				[](auto &left, auto &right)
+				{
+					return left > right;
+				});
+		
+//		std::cout << "My Ip Pool" << std::endl;
+//		for (auto it : weightedIpPool)
+//		{
+//			std::cout << " IP Weight: " << it.first  << " Actual IP: " << IpStringToString(it.second) << std::endl;
+//		}
+
+
+		std::cout << "The Other IP Pool" << std::endl;
+		for (auto it : ipPool)
 		{
-			std::cout << " IP Weight: " << it.first  << " Actual IP: " << IpStringToString(it.second) << std::endl;
+			std::cout << " IP: " << it << std::endl;
 		}
+
+		
 		
 		
 //		for(std::vector<std::vector<std::string> >::const_iterator ip = ip_pool.cbegin(); ip != ip_pool.cend(); ++ip)
