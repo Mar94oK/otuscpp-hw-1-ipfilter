@@ -3,6 +3,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cstring>
+#include <algorithm>
+#include <cmath>
 
 // ("",  '.') -> [""]
 // ("11", '.') -> ["11"]
@@ -29,6 +32,56 @@ std::vector<std::string> split(const std::string &str, char d)
 	return r;
 }
 
+std::string IpStringToString(const std::vector<std::string> &v)
+{
+	std::string result;
+	for (auto it : v)
+	{
+		result += it + ".";
+	}
+	return result;
+}
+
+//https://stackoverflow.com/questions/13756235/how-to-sort-ip-address-in-ascending-order/34441987
+uint64_t GetIpWeight(const std::vector<std::string> &v)
+{
+	if (v.size() > 4)
+		return 0;
+	
+	uint64_t weight = 0;
+	uint8_t powValue = 4;
+	uint32_t bit32IpAddressGroupValues = 256; //one group, ex 126bit addr - 65536 values
+	for (auto it : v)
+	{
+		if (powValue != 1)
+		{
+			weight += (std::stoi(it) * ( std::pow(bit32IpAddressGroupValues, powValue)));
+			powValue--;
+		}
+		else
+		{
+			weight +=(std::stoi(it) * bit32IpAddressGroupValues);
+			return weight;
+		}
+	}
+	
+	return weight;
+}
+
+
+bool sortByWeightAscending(const std::pair<uint32_t , std::vector<std::string>> &a,
+			   const std::pair<uint32_t , std::vector<std::string>> &b)
+{
+	return (a.first < b.first);
+}
+
+bool sortByWeightDescending(const std::pair<uint32_t , std::vector<std::string>> &a,
+						   const std::pair<uint32_t , std::vector<std::string>> &b)
+{
+	return (a.first > b.first);
+}
+
+
 int main(int argc, char const *argv[])
 {
 	std::cout << "Hi, I am Ip-Filter.";
@@ -37,28 +90,46 @@ int main(int argc, char const *argv[])
 	try
 	{
 		std::vector<std::vector<std::string> > ip_pool;
+		std::vector<std::pair<uint64_t , std::vector<std::string>>> weightedIpPool;
 		
 		for(std::string line; std::getline(std::cin, line);)
 		{
 			std::vector<std::string> v = split(line, '\t');
 			ip_pool.push_back(split(v.at(0), '.'));
+		
+			std::string actualIpAddr = v.at(0);
+			uint64_t ipAddrWeight = GetIpWeight(split(actualIpAddr, '.'));
+
+			weightedIpPool.push_back(std::make_pair(ipAddrWeight, split(actualIpAddr, '.')));
+
 		}
 		
 		// TODO reverse lexicographically sort
 		
-		for(std::vector<std::vector<std::string> >::const_iterator ip = ip_pool.cbegin(); ip != ip_pool.cend(); ++ip)
+		std::sort(weightedIpPool.begin(), weightedIpPool.end());
+
+		std::cout << "My Ip Pool" << std::endl;
+		for (auto it : weightedIpPool)
 		{
-			for(std::vector<std::string>::const_iterator ip_part = ip->cbegin(); ip_part != ip->cend(); ++ip_part)
-			{
-				if (ip_part != ip->cbegin())
-				{
-					std::cout << ".";
-					
-				}
-				std::cout << *ip_part;
-			}
-			std::cout << std::endl;
+			std::cout << " IP Weight: " << it.first  << " Actual IP: " << IpStringToString(it.second) << std::endl;
 		}
+		
+		
+//		for(std::vector<std::vector<std::string> >::const_iterator ip = ip_pool.cbegin(); ip != ip_pool.cend(); ++ip)
+//		{
+//            std::cout << "======";
+//		    for(std::vector<std::string>::const_iterator ip_part = ip->cbegin(); ip_part != ip->cend(); ++ip_part)
+//			{
+//				if (ip_part != ip->cbegin())
+//				{
+//					std::cout << ".";
+//
+//				}
+//				std::cout << *ip_part;
+//			}
+//			std::cout << std::endl;
+//            std::cout << "======";
+//		}
 		
 		// 222.173.235.246
 		// 222.130.177.64
