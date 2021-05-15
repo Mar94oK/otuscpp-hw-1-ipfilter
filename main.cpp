@@ -51,12 +51,25 @@ private:
 	
 	static const uint8_t delimiter = '.';
 	static const uint8_t numberOfOctets = 4;
-
+	static const uint8_t maximumValidOctetValue = 255;
+	
 private:
+	
 	
 	bool ValidateOctetSize(const std::string& octet)
 	{
 		return ( (octet.size() < 4) && (octet.size() > 0) );
+	}
+	
+	
+	bool ValidateOctetValue(const std::string& octet)
+	{
+		return (std::stoi(octet) <= maximumValidOctetValue);
+	}
+	
+	bool ValidateOctet(const std::string& octet)
+	{
+		return (ValidateOctetSize(octet) && ValidateOctetValue(octet));
 	}
 	
 	uint64_t GetIpWeight(const std::vector<std::string> &v)
@@ -107,7 +120,7 @@ public:
 		
 		for (auto it : vectorizedValue)
 		{
-			if (!ValidateOctetSize(it))
+			if (!ValidateOctet(it))
 				throw std::runtime_error("Bad string format for IPV4 Address: " + value + " Check octet value: " + it);
 		}
 	
