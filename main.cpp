@@ -55,6 +55,29 @@ private:
 	
 private:
 	
+	class OctetsRepresentation
+	{
+	public:
+		
+		explicit OctetsRepresentation(uint8_t firstOctet, uint8_t secondOctet, uint8_t thirdOctet, uint8_t fourthOctet)
+		{
+			octets.push_back(firstOctet);
+			octets.push_back(secondOctet);
+			octets.push_back(thirdOctet);
+			octets.push_back(fourthOctet);
+		}
+		
+	private:
+		
+		std::vector<const uint8_t > octets;
+		
+	public:
+		
+		const std::vector<const uint8_t> GetOctets() { return octets; }
+	};
+	
+private:
+	
 	
 	bool ValidateOctetSize(const std::string& octet)
 	{
@@ -70,6 +93,14 @@ private:
 	bool ValidateOctet(const std::string& octet)
 	{
 		return (ValidateOctetSize(octet) && ValidateOctetValue(octet));
+	}
+	
+	void ConvertOctetsToDecimal()
+	{
+		firstOctet = std::stoi(vectorizedValue[0]);
+		secondOctet = std::stoi(vectorizedValue[1]);
+		thirdOctet = std::stoi(vectorizedValue[2]);
+		fourthOctet = std::stoi(vectorizedValue[3]);
 	}
 	
 	uint64_t GetIpWeight(const std::vector<std::string> &v)
@@ -103,12 +134,56 @@ private:
 	std::vector<std::string> vectorizedValue;
 	uint64_t weight;
 	
+	uint8_t firstOctet;
+	uint8_t secondOctet;
+	uint8_t thirdOctet;
+	uint8_t fourthOctet;
+	
+	OctetsRepresentation decimalOctetsRepresentation;
 	
 public:
 	
 	friend bool operator> (const IpAddressIPV4 &lhs, const IpAddressIPV4 &rhs);
 	friend std::ostream& operator<<(std::ostream& os, const IpAddressIPV4& addr);
 
+private:
+	
+	bool CheckFirstOctet()
+	{
+	
+	}
+	
+	//const std::size_t n = sizeof...(T);
+	//https://stackoverflow.com/questions/12024304/c11-number-of-variadic-template-function-parameters
+	//
+	
+	//C++20 ---> using "requires"
+	//static_assert is BAD somehow. WHy???
+	//C++14 - use const expr + SFINAE
+	//Справедливо ли это?
+	//https://coderoad.ru/11984768/%D0%9A%D0%BE%D0%B3%D0%B4%D0%B0-%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D1%82%D1%8C-static_assert-%D0%B2%D0%BC%D0%B5%D1%81%D1%82%D0%BE-SFINAE
+	
+	//http://www.cplusplus.com/forum/general/142625/
+//	template<typename... uint8_t>
+//	void FilterByOctets(const uint8_t... t)
+//	{
+//		constexpr std::size_t n = sizeof...(uint8_t) > 4;
+//		if
+//	}
+	
+	//Question: How to check
+	template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
+	bool FilterByOctetsRangeBaseLoop ( const uint8_t... octets)
+	{
+		uint32_t octetID = 0;
+		for(const auto it : {octets...})
+		{
+			if (it != decimalOctetsRepresentation[octetID++])
+				return false;
+		}
+		return true;
+	}
+	
 public:
 	
 	explicit IpAddressIPV4(std::string value)
@@ -123,10 +198,23 @@ public:
 			if (!ValidateOctet(it))
 				throw std::runtime_error("Bad string format for IPV4 Address: " + value + " Check octet value: " + it);
 		}
+		
+		ConvertOctetsToDecimal();
+		decimalOctetsRepresentation = OctetsRepresentation(std::stoi(vectorizedValue[0]), std::stoi(vectorizedValue[2]), std::stoi(vectorizedValue[3]), std::stoi(vectorizedValue[4]));
 	
 		rawValue = value;
 		
 		weight = this->GetIpWeight(vectorizedValue);
+		
+		FilterByOctetsRangeBaseLoop(1);
+	}
+	
+public:
+	
+	template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
+	bool FilterByOctets(const uint8_t... octets)
+	{
+		return FilterByOctetsRangeBaseLoop(octets...);
 	}
 	
 
