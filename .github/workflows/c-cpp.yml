@@ -72,6 +72,7 @@ jobs:
         shell: bash
         run: |
           echo "Testing Commiting .deb package to Releases"
+          mkdir -p Releases
           find . -maxdepth 1 -name \*.deb -exec cp {} Releases/ \;
           cd Releases
           ls -la
