@@ -1,23 +1,143 @@
-name: C/C++ CI
+name: CMake
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Person to greet'
+        required: true
+        default: 'Teacher'
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  TARGET_NAME: "ipFilter"
 
 jobs:
   build:
-
+    # The CMake configure and build commands are platform agnostic and should work equally
+    # well on Windows or Mac.  You can convert this to a matrix build if you need
+    # cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: configure
-      run: ./configure
-    - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
+      - uses: actions/checkout@v2
+
+      - name: Create Build Environment
+        # Some projects don't allow in-source building, so create a separate build directory
+        # We'll use this as our working directory for all subsequent commands
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Configure CMake
+        # Use a bash shell so we can use the same syntax for environment variable
+        # access regardless of the host operating system
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        # Note the current convention is to use the -S and -B options here to specify source
+        # and build directories, but this is only available with CMake 3.13 and higher.
+        # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+        run:  |
+          cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_NUMBER=$GITHUB_RUN_NUMBER -DTARGET_NAME=${{ env.TARGET_NAME }}
+          cd ..
+          ls -la
+          BINARY_VERSION=$(<"binary_version.txt")
+          echo "Current Binary Version BINARY_VERSION':' $BINARY_VERSION"
+          echo "BINARY_VERSION=$BINARY_VERSION" >> $GITHUB_ENV
+
+      - name: Print Current Build Number
+        run: echo "Current Build number':' $GITHUB_RUN_NUMBER"
+
+      - name: Check BINARY_VERSION Defined by Cmake run. (Crutch!!!)
+        run: echo "Current Binary Version BINARY_VERSION':' ${{ env.BINARY_VERSION }}"
+
+      - name: Build
+        working-directory: ${{github.workspace}}/build
+        shell: bash
+        # Execute the build.  You can specify a specific target with "--target <NAME>"
+        run: cmake --build . --config $BUILD_TYPE
+
+      - name: PostBuild
+        working-directory: ${{github.workspace}}
+        shell: bash
+        run: |
+          echo "Testing Post-Build"
+          ls -la
+          ls -la build/
+          ./tools/makeDebPackage.sh --binary-name=${{ env.TARGET_NAME }} --binary-version=${{ env.BINARY_VERSION }} --binary-path=build --install-path=build
+
+      - name: Copy Deb Package to the Releases Directory
+        working-directory: ${{github.workspace}}
+        shell: bash
+        run: |
+          echo "Testing Commiting .deb package to Releases"
+          find . -maxdepth 1 -name \*.deb -exec cp {} Releases/ \;
+          cd Releases
+          ls -la
+
+      - name: Commiting new .deb Package
+        working-directory: ${{github.workspace}}
+        shell: bash
+        run: |
+          echo "Testing git commands to commit new .Deb package to Releases"
+          ls -la
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add Releases/*
+          git commit -m "Adding new debian package"
+          git status
+          git push
+
+      - name: Exemining gpg system
+        env: # Or as an environment variable
+          PRIV_KEY: ${{ secrets.OTUS_COURSE_GPG_SECRET_KEY }}
+          PRIV_KEY_PASSPHRASE: ${{ secrets.OTUS_KEY_PASSPHRASE }}
+          AUTH_TOKEN: ${{ secrets.OTUS_COURSE_TOKEN }}
+        working-directory: ${{github.workspace}}
+        shell: bash
+        run: |
+          echo "Testing gpg and GitHub Secrets."
+          which gpg
+          git config --list
+          echo "Testing Secret: "
+          export GPG_TTY=$(tty)
+          echo -e "$PRIV_KEY" | gpg --batch --import
+          gpg --list-secret-keys h.uvarenkov@gmail.com
+          touch testEncryptedText.txt
+          echo "Trollololo" > testEncryptedText.txt
+          gpg --sign --pinentry-mode=loopback --default-key "h.uvarenkov@gmail.com" --passphrase "${PRIV_KEY_PASSPHRASE}" testEncryptedText.txt
+          mkdir -p ~/tmpForGit/ && cd "$_"
+          git clone https://"${AUTH_TOKEN}":x-oauth-basic@github.com/Mar94oK/BionicAptPackagesRepo.git && cd "$(basename "$_" .git)"
+          ls -la
+          echo "Copying .deb artefact..."
+          find ${{github.workspace}} -maxdepth 1 -name \*.deb -exec cp {} . \;
+          ls -la
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          dpkg-scanpackages --multiversion . > Packages
+          gzip -k -f Packages
+          apt-ftparchive release . > Release
+          gpg --default-key "h.uvarenkov@gmail.com" -abs -o - Release > Release.gpg
+          gpg --default-key "h.uvarenkov@gmail.com" --clearsign -o - Release > InRelease
+          git add -A
+          git commit -m "Adding new .deb package. [GitActions Bot]"
+          git status
+          git push
+
+
+#      - name: Test
+#        working-directory: ${{github.workspace}}/build
+#        shell: bash
+#        # Execute tests defined by the CMake configuration.
+#        # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+#        run: ctest -C $BUILD_TYPE
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-artefacts
+          path: |
+            build/${{ env.TARGET_NAME }}
+            ${{github.workspace}}/*.deb
+            testEncryptedText.txt.gpg
