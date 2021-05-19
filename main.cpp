@@ -44,6 +44,13 @@ std::vector<std::string> split(const std::string &str, char d)
 //}
 
 
+void SeparateOutput()
+{
+	std::cout << std::endl;
+	std::cout << "=======================" << std::endl;
+	std::cout << std::endl;
+}
+
 class IpAddressIPV4
 {
 
@@ -225,6 +232,20 @@ public:
 	}
 	
 	
+	bool FilterAny(uint8_t octet)
+	{
+		for (auto it : _decimalOctetsRepresentation)
+		{
+			if (it == octet)
+				return true;
+		}
+		
+		return false;
+	}
+
+//"Dead code". Were used to test approaches. Saved as reference.
+private:
+	
 	template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
 	bool FilterByOctetsLambdas(const uint8_t... octets)
 	{
@@ -296,20 +317,42 @@ uint64_t GetIpWeight(const std::vector<std::string> &v)
 }
 
 
+//Yes, it is global variable. To save syntax like "auto var = filter(1);"
+std::vector<IpAddressIPV4> ipPool;
+
+
+template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
+std::vector<IpAddressIPV4> Filter(uint8_t... octets)
+{
+	std::vector<IpAddressIPV4> result;
+	for (auto it : ipPool)
+	{
+		if (it.FilterByOctets(octets...))
+			result.push_back(it);
+	}
+	return result;
+}
+
+
+std::vector<IpAddressIPV4> FilterAny(uint8_t octet)
+{
+	std::vector<IpAddressIPV4> result;
+	for (auto it : ipPool)
+	{
+		if (it.FilterAny(octet))
+			result.push_back(it);
+	}
+	return result;
+}
+
+
 int main(int argc, char const *argv[])
 {
-	std::cout << "Hi, I am Ip-Filter.";
-	std::cout << "I am doing only lazy commit.";
-	
-	IpAddressIPV4 myTestAddr = IpAddressIPV4("1.2.3.4");
-	IpAddressIPV4 anotherMyTestAddr = IpAddressIPV4("2.2.3.4");
-	IpAddressIPV4 yetAnotherMyTestAddr = IpAddressIPV4("3.2.3.4");
-
 	try
 	{
 		std::vector<std::vector<std::string> > ip_pool;
 		std::vector<std::pair<uint64_t , std::vector<std::string>>> weightedIpPool;
-		std::vector<IpAddressIPV4> ipPool;
+
 		
 		for(std::string line; std::getline(std::cin, line);)
 		{
@@ -349,38 +392,15 @@ int main(int argc, char const *argv[])
 				{
 					return left > right;
 				});
-		
-//		std::cout << "My Ip Pool" << std::endl;
-//		for (auto it : weightedIpPool)
-//		{
-//			std::cout << " IP Weight: " << it.first  << " Actual IP: " << IpStringToString(it.second) << std::endl;
-//		}
 
-
-		std::cout << "The Other IP Pool" << std::endl;
+		std::cout << std::endl << "The IP Pool: " << std::endl << std::endl;
 		for (auto it : ipPool)
 		{
 			std::cout << " IP: " << it << std::endl;
 		}
+		
+		SeparateOutput();
 
-		
-		
-		
-//		for(std::vector<std::vector<std::string> >::const_iterator ip = ip_pool.cbegin(); ip != ip_pool.cend(); ++ip)
-//		{
-//            std::cout << "======";
-//		    for(std::vector<std::string>::const_iterator ip_part = ip->cbegin(); ip_part != ip->cend(); ++ip_part)
-//			{
-//				if (ip_part != ip->cbegin())
-//				{
-//					std::cout << ".";
-//
-//				}
-//				std::cout << *ip_part;
-//			}
-//			std::cout << std::endl;
-//            std::cout << "======";
-//		}
 		
 		// 222.173.235.246
 		// 222.130.177.64
@@ -392,6 +412,15 @@ int main(int argc, char const *argv[])
 		
 		// TODO filter by first byte and output
 		// ip = filter(1)
+		auto filterByFirstByteResult = Filter(1);
+		std::cout << "The IP Pool filtered by first byte (1): " << std::endl << std::endl;
+		for (auto it : filterByFirstByteResult)
+		{
+			std::cout << " IP: " << it << std::endl;
+		}
+		
+		SeparateOutput();
+		
 		
 		// 1.231.69.33
 		// 1.87.203.225
@@ -401,6 +430,14 @@ int main(int argc, char const *argv[])
 		
 		// TODO filter by first and second bytes and output
 		// ip = filter(46, 70)
+		auto filterByFirstAndSecondByteResult = Filter(46, 70);
+		std::cout << "The IP Pool filtered by first and second byte (46,70): " << std::endl << std::endl;
+		for (auto it : filterByFirstAndSecondByteResult)
+		{
+			std::cout << " IP: " << it << std::endl;
+		}
+		
+		SeparateOutput();
 		
 		// 46.70.225.39
 		// 46.70.147.26
@@ -409,6 +446,15 @@ int main(int argc, char const *argv[])
 		
 		// TODO filter by any byte and output
 		// ip = filter_any(46)
+		
+		auto filterByAnyByteResult = FilterAny(46);
+		std::cout << "The IP Pool filtered by Any Byte (46): " << std::endl << std::endl;
+		for (auto it : filterByAnyByteResult)
+		{
+			std::cout << " IP: " << it << std::endl;
+		}
+		
+		SeparateOutput();
 		
 		// 186.204.34.46
 		// 186.46.222.194
