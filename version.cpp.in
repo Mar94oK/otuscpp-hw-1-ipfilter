@@ -1,0 +1,10 @@
+#include <version.h>
+
+namespace MyHomework
+{
+	const int HomeWorkMajorNumber = @HOMEWORK_MAJOR_NUMBER@;
+	const int HomeWorkMinorNumber = @HOMEWORK_MINOR_NUMBER@;
+	const int HomeWorkBuildNumber = @HOMEWORK_BUILD_NUMBER@;
+
+	const char *BuildTime = "@TODAY@";
+}

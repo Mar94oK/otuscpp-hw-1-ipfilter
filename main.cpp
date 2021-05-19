@@ -7,6 +7,11 @@
 #include <algorithm>
 #include <cmath>
 
+#include <version.h>
+#include <BuildNumber.h>
+
+using namespace MyHomework;
+
 // ("",  '.') -> [""]
 // ("11", '.') -> ["11"]
 // ("..", '.') -> ["", "", ""]
@@ -348,6 +353,10 @@ std::vector<IpAddressIPV4> FilterAny(uint8_t octet)
 
 int main(int argc, char const *argv[])
 {
+	BuildNumber bn(HomeWorkMajorNumber, HomeWorkMinorNumber, HomeWorkBuildNumber, BuildTime);
+	
+	std::cout << "build " << bn;
+	
 	try
 	{
 		std::vector<std::vector<std::string> > ip_pool;
