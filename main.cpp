@@ -121,31 +121,7 @@ public:
 
 private:
 	
-	bool CheckFirstOctet()
-	{
-	
-	}
-	
-	//const std::size_t n = sizeof...(T);
-	//https://stackoverflow.com/questions/12024304/c11-number-of-variadic-template-function-parameters
-	//
-	
-	//C++20 ---> using "requires"
-	//static_assert is BAD somehow. WHy???
-	//C++14 - use const expr + SFINAE
-	//Справедливо ли это?
-	//https://coderoad.ru/11984768/%D0%9A%D0%BE%D0%B3%D0%B4%D0%B0-%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D1%82%D1%8C-static_assert-%D0%B2%D0%BC%D0%B5%D1%81%D1%82%D0%BE-SFINAE
-	
-	//http://www.cplusplus.com/forum/general/142625/
-//	template<typename... uint8_t>
-//	void FilterByOctets(const uint8_t... t)
-//	{
-//		constexpr std::size_t n = sizeof...(uint8_t) > 4;
-//		if
-//	}
-
-
-//https://stackoverflow.com/questions/7230621/how-can-i-iterate-over-a-packed-variadic-template-argument-list
+	//https://stackoverflow.com/questions/7230621/how-can-i-iterate-over-a-packed-variadic-template-argument-list
 
 	//Question: How to check
 	template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
@@ -168,17 +144,8 @@ private:
 		
 		for(const auto it : result)
 		{
-			std::cout << "Result: " << it << std::endl;
-		}
-		
-		for(const auto it : result)
-		{
 			if (!it)
-			{
-				std::cout << "Returning FALSE!";
 				return false;
-			}
-			
 		}
 		
 		return true;
@@ -192,14 +159,9 @@ private:
 		uint32_t octetID = 0;
 		return do_for([&](auto octet)
 		{
-			std::cout << "Octet: " << octet << std::endl;;
 			if (octet != _decimalOctetsRepresentation[octetID++])
-			{
-				std::cout << "Returning false!";
 				return false;
-			}
 			
-			std::cout << "Returning true!" << std::endl;
 			return true;
 		}, octets...);
 	}
@@ -343,26 +305,6 @@ int main(int argc, char const *argv[])
 	IpAddressIPV4 anotherMyTestAddr = IpAddressIPV4("2.2.3.4");
 	IpAddressIPV4 yetAnotherMyTestAddr = IpAddressIPV4("3.2.3.4");
 
-//	if (myTestAddr.FilterByOctets(1))
-//		std::cout << "Ip Addr: " << myTestAddr << " Filtered!" << std::endl;
-//
-//	if (myTestAddr.FilterByOctets(2,2,3))
-//		std::cout << "Ip Addr: " << myTestAddr << " Filtered!" << std::endl;
-//
-//	if (myTestAddr.FilterByOctets(2,2,3,4))
-//		std::cout << "Ip Addr: " << myTestAddr << " Filtered!"  << std::endl;
-//
-//	if (myTestAddr.FilterByOctets(2))
-//		std::cout << "Ip Addr: " << myTestAddr << " Filtered!"  << std::endl;
-//
-	if (anotherMyTestAddr.FilterByOctetsLambdas(2,2,3,4))
-		std::cout << "Ip Addr: " << anotherMyTestAddr << " Filtered!" << std::endl;
-	//myTestAddr.FilterByOctetsLambdas(2,2);
-	//myTestAddr.FilterByOctetsLambdas(3,2,3);
-	
-	if (yetAnotherMyTestAddr.FilterByOctetsLambdasCCP17(3,2))
-		std::cout << "Ip Addr: " << yetAnotherMyTestAddr << " Filtered!" << std::endl;
-	
 	try
 	{
 		std::vector<std::vector<std::string> > ip_pool;
