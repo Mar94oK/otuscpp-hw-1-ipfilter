@@ -55,29 +55,6 @@ private:
 	
 private:
 	
-	class OctetsRepresentation
-	{
-	public:
-		
-		explicit OctetsRepresentation(uint8_t firstOctet, uint8_t secondOctet, uint8_t thirdOctet, uint8_t fourthOctet)
-		{
-			octets.push_back(firstOctet);
-			octets.push_back(secondOctet);
-			octets.push_back(thirdOctet);
-			octets.push_back(fourthOctet);
-		}
-		
-	private:
-		
-		std::vector<const uint8_t > octets;
-		
-	public:
-		
-		const std::vector<const uint8_t> GetOctets() { return octets; }
-	};
-	
-private:
-	
 	
 	bool ValidateOctetSize(const std::string& octet)
 	{
@@ -97,10 +74,11 @@ private:
 	
 	void ConvertOctetsToDecimal()
 	{
-		firstOctet = std::stoi(vectorizedValue[0]);
-		secondOctet = std::stoi(vectorizedValue[1]);
-		thirdOctet = std::stoi(vectorizedValue[2]);
-		fourthOctet = std::stoi(vectorizedValue[3]);
+		_decimalOctetsRepresentation.push_back(std::stoi(vectorizedValue[0]));
+		_decimalOctetsRepresentation.push_back(std::stoi(vectorizedValue[1]));
+		_decimalOctetsRepresentation.push_back(std::stoi(vectorizedValue[2]));
+		_decimalOctetsRepresentation.push_back(std::stoi(vectorizedValue[3]));
+		
 	}
 	
 	uint64_t GetIpWeight(const std::vector<std::string> &v)
@@ -134,12 +112,7 @@ private:
 	std::vector<std::string> vectorizedValue;
 	uint64_t weight;
 	
-	uint8_t firstOctet;
-	uint8_t secondOctet;
-	uint8_t thirdOctet;
-	uint8_t fourthOctet;
-	
-	OctetsRepresentation decimalOctetsRepresentation;
+	std::vector<int32_t > _decimalOctetsRepresentation;
 	
 public:
 	
@@ -178,10 +151,54 @@ private:
 		uint32_t octetID = 0;
 		for(const auto it : {octets...})
 		{
-			if (it != decimalOctetsRepresentation[octetID++])
+			if (it != _decimalOctetsRepresentation[octetID++])
 				return false;
 		}
 		return true;
+	}
+	
+	//C++14 Lambda
+	template <class F, class... Args>
+	bool do_for(F f, Args... args)
+	{
+		int result[] = {(f(args))...};
+		
+		for(const auto it : result)
+		{
+			std::cout << "Result: " << it << std::endl;
+		}
+		
+		for(const auto it : result)
+		{
+			if (!it)
+			{
+				std::cout << "Returning FALSE!";
+				return false;
+			}
+			
+		}
+		
+		return true;
+	}
+	
+	
+	//Not so effective since it must have been run thru all the octets while RangeFor stops at first fault.
+	template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
+	bool FilterByOctetsGenericLambdas(const uint8_t... octets)
+	{
+		uint32_t octetID = 0;
+		return do_for([&](auto octet)
+		{
+			std::cout << "Octet: " << octet << std::endl;;
+			if (octet != _decimalOctetsRepresentation[octetID++])
+			{
+				std::cout << "Returning false!";
+				return false;
+			}
+			
+			std::cout << "Returning true!" << std::endl;
+			return true;
+		}, octets...);
 	}
 	
 public:
@@ -200,13 +217,13 @@ public:
 		}
 		
 		ConvertOctetsToDecimal();
-		decimalOctetsRepresentation = OctetsRepresentation(std::stoi(vectorizedValue[0]), std::stoi(vectorizedValue[2]), std::stoi(vectorizedValue[3]), std::stoi(vectorizedValue[4]));
 	
 		rawValue = value;
 		
 		weight = this->GetIpWeight(vectorizedValue);
 		
-		FilterByOctetsRangeBaseLoop(1);
+		if (FilterByOctetsRangeBaseLoop(1))
+			std::cout << "Has 1 in first octet!" << std::endl;
 	}
 	
 public:
@@ -217,6 +234,12 @@ public:
 		return FilterByOctetsRangeBaseLoop(octets...);
 	}
 	
+	
+	template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
+	bool FilterByOctetsLambdas(const uint8_t... octets)
+	{
+		return FilterByOctetsGenericLambdas(octets...);
+	}
 
 };
 
@@ -281,6 +304,27 @@ int main(int argc, char const *argv[])
 {
 	std::cout << "Hi, I am Ip-Filter.";
 	std::cout << "I am doing only lazy commit.";
+	
+	IpAddressIPV4 myTestAddr = IpAddressIPV4("1.2.3.4");
+	IpAddressIPV4 anotherMyTestAddr = IpAddressIPV4("2.2.3.4");
+	IpAddressIPV4 yetAnotherMyTestAddr = IpAddressIPV4("3.2.3.4");
+
+//	if (myTestAddr.FilterByOctets(1))
+//		std::cout << "Ip Addr: " << myTestAddr << " Filtered!" << std::endl;
+//
+//	if (myTestAddr.FilterByOctets(2,2,3))
+//		std::cout << "Ip Addr: " << myTestAddr << " Filtered!" << std::endl;
+//
+//	if (myTestAddr.FilterByOctets(2,2,3,4))
+//		std::cout << "Ip Addr: " << myTestAddr << " Filtered!"  << std::endl;
+//
+//	if (myTestAddr.FilterByOctets(2))
+//		std::cout << "Ip Addr: " << myTestAddr << " Filtered!"  << std::endl;
+//
+	if (anotherMyTestAddr.FilterByOctetsLambdas(2,2,3,4))
+		std::cout << "Ip Addr: " << anotherMyTestAddr << " Filtered!" << std::endl;
+	//myTestAddr.FilterByOctetsLambdas(2,2);
+	//myTestAddr.FilterByOctetsLambdas(3,2,3);
 	
 	try
 	{
