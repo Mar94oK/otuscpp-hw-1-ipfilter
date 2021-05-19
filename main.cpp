@@ -143,7 +143,10 @@ private:
 //		constexpr std::size_t n = sizeof...(uint8_t) > 4;
 //		if
 //	}
-	
+
+
+//https://stackoverflow.com/questions/7230621/how-can-i-iterate-over-a-packed-variadic-template-argument-list
+
 	//Question: How to check
 	template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
 	bool FilterByOctetsRangeBaseLoop ( const uint8_t... octets)
@@ -184,7 +187,7 @@ private:
 	
 	//Not so effective since it must have been run thru all the octets while RangeFor stops at first fault.
 	template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
-	bool FilterByOctetsGenericLambdas(const uint8_t... octets)
+	bool FilterByOctetsGenericLambdasCPP14(const uint8_t... octets)
 	{
 		uint32_t octetID = 0;
 		return do_for([&](auto octet)
@@ -199,6 +202,33 @@ private:
 			std::cout << "Returning true!" << std::endl;
 			return true;
 		}, octets...);
+	}
+	
+	//Can't be used with my gcc because of:
+	//https://stackoverflow.com/questions/43499015/uninitialized-captured-reference-error-when-using-lambdas-in-fold-expression
+	//https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47226
+	//https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85305
+	//Fixed only in
+	// "Jason Merrill 2018-05-04 20:21:14 UTC
+	//Fixed for 8.2."
+	template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
+	bool FilterByOctetsGenericLambdasCPP17 (uint8_t ... octets)
+	{
+		uint32_t octetID = 0;
+		bool filtered = true;
+		
+		([&] (auto octet)
+		{
+			if (filtered)
+			{
+				if (octet != _decimalOctetsRepresentation[octetID++])
+				{
+					filtered = false;
+				}
+			}
+		} (octets), ...);
+		
+		return filtered;
 	}
 	
 public:
@@ -222,8 +252,6 @@ public:
 		
 		weight = this->GetIpWeight(vectorizedValue);
 		
-		if (FilterByOctetsRangeBaseLoop(1))
-			std::cout << "Has 1 in first octet!" << std::endl;
 	}
 	
 public:
@@ -238,7 +266,13 @@ public:
 	template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
 	bool FilterByOctetsLambdas(const uint8_t... octets)
 	{
-		return FilterByOctetsGenericLambdas(octets...);
+		return FilterByOctetsGenericLambdasCPP14(octets...);
+	}
+	
+	template <typename ... uint8_t, std::enable_if_t<((sizeof...(uint8_t) < 5) && (sizeof...(uint8_t) > 0)), bool> = true>
+	bool FilterByOctetsLambdasCCP17(const uint8_t... octets)
+	{
+		return FilterByOctetsGenericLambdasCPP17(octets...);
 	}
 
 };
@@ -325,6 +359,9 @@ int main(int argc, char const *argv[])
 		std::cout << "Ip Addr: " << anotherMyTestAddr << " Filtered!" << std::endl;
 	//myTestAddr.FilterByOctetsLambdas(2,2);
 	//myTestAddr.FilterByOctetsLambdas(3,2,3);
+	
+	if (yetAnotherMyTestAddr.FilterByOctetsLambdasCCP17(3,2))
+		std::cout << "Ip Addr: " << yetAnotherMyTestAddr << " Filtered!" << std::endl;
 	
 	try
 	{
